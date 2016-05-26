@@ -20,8 +20,9 @@ package org.apache.spark.sql
 import org.apache.spark.{SharedSparkContext, SparkFunSuite}
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.internal.SQLConf
 
-class SQLContextSuite extends SparkFunSuite with SharedSparkContext{
+class SQLContextSuite extends SparkFunSuite with SharedSparkContext {
 
   object DummyRule extends Rule[LogicalPlan] {
     def apply(p: LogicalPlan): LogicalPlan = p
@@ -39,7 +40,7 @@ class SQLContextSuite extends SparkFunSuite with SharedSparkContext{
     val newSession = sqlContext.newSession()
     assert(SQLContext.getOrCreate(sc).eq(sqlContext),
       "SQLContext.getOrCreate after explicitly created SQLContext did not return the context")
-    SQLContext.setActive(newSession)
+    SparkSession.setActiveSession(newSession.sparkSession)
     assert(SQLContext.getOrCreate(sc).eq(newSession),
       "SQLContext.getOrCreate after explicitly setActive() did not return the active context")
   }
@@ -59,7 +60,7 @@ class SQLContextSuite extends SparkFunSuite with SharedSparkContext{
 
     // temporary table should not be shared
     val df = session1.range(10)
-    df.registerTempTable("test1")
+    df.createOrReplaceTempView("test1")
     assert(session1.tableNames().contains("test1"))
     assert(!session2.tableNames().contains("test1"))
 
@@ -75,6 +76,7 @@ class SQLContextSuite extends SparkFunSuite with SharedSparkContext{
   test("Catalyst optimization passes are modifiable at runtime") {
     val sqlContext = SQLContext.getOrCreate(sc)
     sqlContext.experimental.extraOptimizations = Seq(DummyRule)
-    assert(sqlContext.optimizer.batches.flatMap(_.rules).contains(DummyRule))
+    assert(sqlContext.sessionState.optimizer.batches.flatMap(_.rules).contains(DummyRule))
   }
+
 }

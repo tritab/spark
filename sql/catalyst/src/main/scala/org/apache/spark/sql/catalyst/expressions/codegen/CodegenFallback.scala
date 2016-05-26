@@ -24,7 +24,7 @@ import org.apache.spark.sql.catalyst.expressions.{Expression, LeafExpression, No
  */
 trait CodegenFallback extends Expression {
 
-  protected def genCode(ctx: CodegenContext, ev: ExprCode): String = {
+  protected def doGenCode(ctx: CodegenContext, ev: ExprCode): ExprCode = {
     foreach {
       case n: Nondeterministic => n.setInitialValues()
       case _ =>
@@ -35,23 +35,22 @@ trait CodegenFallback extends Expression {
     val idx = ctx.references.length
     ctx.references += this
     val objectTerm = ctx.freshName("obj")
+    val placeHolder = ctx.registerComment(this.toString)
     if (nullable) {
-      s"""
-        /* expression: ${this.toCommentSafeString} */
+      ev.copy(code = s"""
+        $placeHolder
         Object $objectTerm = ((Expression) references[$idx]).eval($input);
         boolean ${ev.isNull} = $objectTerm == null;
         ${ctx.javaType(this.dataType)} ${ev.value} = ${ctx.defaultValue(this.dataType)};
         if (!${ev.isNull}) {
           ${ev.value} = (${ctx.boxedType(this.dataType)}) $objectTerm;
-        }
-      """
+        }""")
     } else {
-      ev.isNull = "false"
-      s"""
-        /* expression: ${this.toCommentSafeString} */
+      ev.copy(code = s"""
+        $placeHolder
         Object $objectTerm = ((Expression) references[$idx]).eval($input);
         ${ctx.javaType(this.dataType)} ${ev.value} = (${ctx.boxedType(this.dataType)}) $objectTerm;
-      """
+        """, isNull = "false")
     }
   }
 }

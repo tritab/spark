@@ -22,6 +22,8 @@ import java.text.{DateFormat, SimpleDateFormat}
 import java.util.{Calendar, TimeZone}
 import javax.xml.bind.DatatypeConverter
 
+import scala.annotation.tailrec
+
 import org.apache.spark.unsafe.types.UTF8String
 
 /**
@@ -55,8 +57,17 @@ object DateTimeUtils {
   // this is year -17999, calculation: 50 * daysIn400Year
   final val YearZero = -17999
   final val toYearZero = to2001 + 7304850
+  final val TimeZoneGMT = TimeZone.getTimeZone("GMT")
+  final val MonthOf31Days = Set(1, 3, 5, 7, 8, 10, 12)
 
   @transient lazy val defaultTimeZone = TimeZone.getDefault
+
+  // Reuse the Calendar object in each thread as it is expensive to create in each method call.
+  private val threadLocalGmtCalendar = new ThreadLocal[Calendar] {
+    override protected def initialValue: Calendar = {
+      Calendar.getInstance(TimeZoneGMT)
+    }
+  }
 
   // Java TimeZone has no mention of thread safety. Use thread local instance to be safe.
   private val threadLocalLocalTimeZone = new ThreadLocal[TimeZone] {
@@ -66,7 +77,7 @@ object DateTimeUtils {
   }
 
   // `SimpleDateFormat` is not thread-safe.
-  private val threadLocalTimestampFormat = new ThreadLocal[DateFormat] {
+  val threadLocalTimestampFormat = new ThreadLocal[DateFormat] {
     override def initialValue(): SimpleDateFormat = {
       new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
     }
@@ -109,6 +120,7 @@ object DateTimeUtils {
     }
   }
 
+  @tailrec
   def stringToTime(s: String): java.util.Date = {
     val indexOfGMT = s.indexOf("GMT")
     if (indexOfGMT != -1) {
@@ -322,8 +334,7 @@ object DateTimeUtils {
       digitsMilli += 1
     }
 
-    if (!justTime && (segments(0) < 0 || segments(0) > 9999 || segments(1) < 1 ||
-        segments(1) > 12 || segments(2) < 1 || segments(2) > 31)) {
+    if (!justTime && isInvalidDate(segments(0), segments(1), segments(2))) {
       return None
     }
 
@@ -403,14 +414,34 @@ object DateTimeUtils {
       return None
     }
     segments(i) = currentSegmentValue
-    if (segments(0) < 0 || segments(0) > 9999 || segments(1) < 1 || segments(1) > 12 ||
-        segments(2) < 1 || segments(2) > 31) {
+    if (isInvalidDate(segments(0), segments(1), segments(2))) {
       return None
     }
-    val c = Calendar.getInstance(TimeZone.getTimeZone("GMT"))
+
+    val c = threadLocalGmtCalendar.get()
+    c.clear()
     c.set(segments(0), segments(1) - 1, segments(2), 0, 0, 0)
     c.set(Calendar.MILLISECOND, 0)
     Some((c.getTimeInMillis / MILLIS_PER_DAY).toInt)
+  }
+
+  /**
+   * Return true if the date is invalid.
+   */
+  private def isInvalidDate(year: Int, month: Int, day: Int): Boolean = {
+    if (year < 0 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) {
+      return true
+    }
+    if (month == 2) {
+      if (isLeapYear(year) && day > 29) {
+        return true
+      } else if (!isLeapYear(year) && day > 28) {
+        return true
+      }
+    } else if (!MonthOf31Days.contains(month) && day > 30) {
+      return true
+    }
+    false
   }
 
   /**

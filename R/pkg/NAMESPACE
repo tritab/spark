@@ -12,15 +12,23 @@ export("print.jobj")
 
 # MLlib integration
 exportMethods("glm",
+              "spark.glm",
               "predict",
-              "summary")
+              "summary",
+              "spark.kmeans",
+              "fitted",
+              "spark.naiveBayes",
+              "spark.survreg")
 
 # Job group lifecycle management methods
 export("setJobGroup",
        "clearJobGroup",
        "cancelJobGroup")
 
-exportClasses("DataFrame")
+# Export Utility methods
+export("setLogLevel")
+
+exportClasses("SparkDataFrame")
 
 exportMethods("arrange",
               "as.data.frame",
@@ -35,10 +43,16 @@ exportMethods("arrange",
               "count",
               "cov",
               "corr",
+              "covar_samp",
+              "covar_pop",
               "crosstab",
+              "dapply",
+              "dapplyCollect",
               "describe",
               "dim",
               "distinct",
+              "drop",
+              "dropDuplicates",
               "dropna",
               "dtypes",
               "except",
@@ -93,9 +107,11 @@ exportMethods("arrange",
               "withColumn",
               "withColumnRenamed",
               "write.df",
+              "write.jdbc",
               "write.json",
               "write.parquet",
-              "write.text")
+              "write.text",
+              "write.ml")
 
 exportClasses("Column")
 
@@ -105,6 +121,7 @@ exportMethods("%in%",
               "add_months",
               "alias",
               "approxCountDistinct",
+              "approxQuantile",
               "array_contains",
               "asc",
               "ascii",
@@ -116,6 +133,7 @@ exportMethods("%in%",
               "between",
               "bin",
               "bitwiseNOT",
+              "bround",
               "cast",
               "cbrt",
               "ceil",
@@ -158,6 +176,7 @@ exportMethods("%in%",
               "getItem",
               "greatest",
               "hex",
+              "histogram",
               "hour",
               "hypot",
               "ifelse",
@@ -198,6 +217,7 @@ exportMethods("%in%",
               "next_day",
               "ntile",
               "otherwise",
+              "over",
               "percent_rank",
               "pmod",
               "quarter",
@@ -256,6 +276,7 @@ exportMethods("%in%",
               "var_samp",
               "weekofyear",
               "when",
+              "window",
               "year")
 
 exportClasses("GroupedData")
@@ -271,18 +292,22 @@ export("as.DataFrame",
        "createExternalTable",
        "dropTempTable",
        "jsonFile",
-       "read.json",
        "loadDF",
        "parquetFile",
        "read.df",
+       "read.jdbc",
+       "read.json",
        "read.parquet",
        "read.text",
+       "spark.lapply",
        "sql",
        "str",
-       "table",
+       "tableToDF",
        "tableNames",
        "tables",
-       "uncacheTable")
+       "uncacheTable",
+       "print.summary.GeneralizedLinearRegressionModel",
+       "read.ml")
 
 export("structField",
        "structField.jobj",
@@ -292,3 +317,12 @@ export("structField",
        "structType.jobj",
        "structType.structField",
        "print.structType")
+
+exportClasses("WindowSpec")
+
+export("partitionBy",
+       "rowsBetween",
+       "rangeBetween")
+
+export("window.partitionBy",
+       "window.orderBy")
